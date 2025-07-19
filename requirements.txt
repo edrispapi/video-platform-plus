@@ -1,8 +1,14 @@
-ultralytics 
-detectron2 
-transformers 
-openai-whisper 
-web3.py 
-boto3 
-channels 
-redis
+django>=4.2
+djangorestframework>=3.14
+channels>=4.0
+redis>=4.5
+celery>=5.2
+psycopg2-binary>=2.9
+ultralytics>=8.0
+detectron2>=0.6
+transformers>=4.30
+openai-whisper>=20230314
+web3.py>=6.0
+boto3>=1.26
+drf-yasg>=1.20  # برای مستندات API
+django-i18n>=1.0  # برای چندزبانه
