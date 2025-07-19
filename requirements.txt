@@ -1,0 +1,8 @@
+ultralytics 
+detectron2 
+transformers 
+openai-whisper 
+web3.py 
+boto3 
+channels 
+redis
