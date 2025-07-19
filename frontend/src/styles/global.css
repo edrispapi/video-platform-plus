@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.main-content {
+  display: flex;
+}
+
+.content-area {
+  flex-grow: 1;
+  padding: 20px;
+}
+
+@media (max-width: 600px) {
+  .content-area {
+    padding: 10px;
+  }
+}
