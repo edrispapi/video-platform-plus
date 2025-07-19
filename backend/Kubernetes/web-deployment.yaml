@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+  namespace: video-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: your-registry/video-platform-web:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: "512Mi"
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: video-platform
+data:
+  nginx.conf: |
+    http {
+      server {
+        listen 80;
+        listen 443 ssl;
+        server_name yourdomain.com;
+        ssl_certificate /etc/nginx/ssl/yourdomain.crt;
+        ssl_certificate_key /etc/nginx/ssl/yourdomain.key;
+        location /hls/ {
+          types {
+            application/vnd.apple.mpegurl m3u8;
+            video/mp2t ts;
+          }
+          alias /app/media/hls/;
+        }
+        location /dash/ {
+          types {
+            application/dash+xml mpd;
+          }
+          alias /app/media/dash/;
+        }
+      }
+    }
