@@ -1,14 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
 
 class CustomUser(AbstractUser):
     pass
 
 class Profile(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="profiles")
-    name = models.CharField(max_length=64)
-    preferences = models.JSONField(default=dict, blank=True)
+    name = models.CharField(max_length=64, verbose_name=_("name"))
+    preferences = models.JSONField(default=dict, blank=True, verbose_name=_("preferences"))
 
 class DashboardConfig(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    widgets = models.JSONField(default=dict, blank=True)
+    widgets = models.JSONField(default=dict, blank=True, verbose_name=_("widgets"))
