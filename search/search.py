@@ -1,6 +1,4 @@
-"""Elasticsearch search utilities for videos"""
 from elasticsearch import Elasticsearch
-
 es = Elasticsearch(['http://localhost:9200'])
 
 def search_videos(query_text):
@@ -8,9 +6,8 @@ def search_videos(query_text):
         "query": {
             "multi_match": {
                 "query": query_text,
-                "fields": ["title", "description"]
+                "fields": ["title", "description", "tags"]
             }
         }
     }
-    results = es.search(index="videos", body=body)
-    return results['hits']['hits']
+    return es.search(index='videos', body=body)['hits']['hits']
