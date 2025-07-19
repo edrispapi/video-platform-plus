@@ -15,3 +15,18 @@ class VideoViewSet(viewsets.ModelViewSet):
         video = self.get_object()
         process_video_for_branding_removal.delay(video.id)
         return Response({'status': 'AI processing started for video', 'video_id': video.id}, status=status.HTTP_202_ACCEPTED)
+
+    def get(self, request):
+        """جستجوی ویدئوها با پارامتر q"""
+        query = request.query_params.get('q', '')
+        videos = Video.objects.filter(title__icontains=query)
+        serializer = VideoSerializer(videos, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        """آپلود ویدئو جدید"""
+        serializer = VideoSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
