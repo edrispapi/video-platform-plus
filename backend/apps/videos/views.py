@@ -8,11 +8,19 @@ from .serializers import VideoSerializer, CommentSerializer
 from ai_engine.tasks import process_video_for_branding_removal, moderate_content
 from datetime import datetime, timedelta
 from web3 import Web3
+from kafka import KafkaProducer
+import json
 
-w3 = Web3(Web3.HTTPProvider('https://your-blockchain-node'))
+w3 = Web3(Web3.HTTPProducer('https://your-blockchain-node'))
 contract_address = 'your_contract_address'
 contract_abi = [...]
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+
+# تنظیم Kafka Producer
+producer = KafkaProducer(
+    bootstrap_servers=['kafka:9092'],
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
 
 class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
@@ -51,12 +59,18 @@ class VideoViewSet(viewsets.ModelViewSet):
             comment.parent = parent_comment
             comment.save()
         moderate_content.delay(comment.id, 'comment')
+        # ارسال داده به Kafka
+        event = {'event_type': 'comment', 'video_id': video.id, 'user_id': request.user.id, 'text': text, 'timestamp': datetime.utcnow().isoformat()}
+        producer.send('video_events', event)
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def like_video(self, request, pk=None):
         video = self.get_object()
         video.likes.add(request.user)
+        # ارسال داده به Kafka
+        event = {'event_type': 'like', 'video_id': video.id, 'user_id': request.user.id, 'timestamp': datetime.utcnow().isoformat()}
+        producer.send('video_events', event)
         return Response({'status': 'liked'}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['get'])
@@ -90,6 +104,9 @@ class VideoViewSet(viewsets.ModelViewSet):
             {'id': 3, 'url': 'ad3.mp4', 'bid': random.uniform(0.1, 1.0)}
         ]
         best_ad = max(ads, key=lambda x: x['bid'])
+        # ارسال داده به Kafka
+        event = {'event_type': 'ad_view', 'video_id': video.id, 'ad_id': best_ad['id'], 'timestamp': datetime.utcnow().isoformat()}
+        producer.send('video_events', event)
         return Response({'ad_url': best_ad['url']}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
@@ -105,4 +122,7 @@ class VideoViewSet(viewsets.ModelViewSet):
         })
         signed_tx = w3.eth.account.sign_transaction(tx, 'your_private_key')
         tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        # ارسال داده به Kafka
+        event = {'event_type': 'revenue', 'video_id': video.id, 'amount': amount, 'timestamp': datetime.utcnow().isoformat()}
+        producer.send('video_events', event)
         return Response({'tx_hash': tx_hash.hex()}, status=status.HTTP_200_OK)
