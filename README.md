@@ -12,24 +12,27 @@
 - مانیتورینگ با Prometheus/Grafana
 - پیشنهاد و دسته‌بندی هوشمند محتوا
 - پردازش ویدئو و صوت با Celery و FFmpeg
+- سیستم کامنت‌ها و رأی‌دهی
+- مدیریت کانال‌ها و اشتراک
+- لیست پخش سفارشی
 
 ## 🚀 شروع سریع
 1. پیش‌نیاز: Docker، Kubernetes، Python 3.9+
-2. تنظیم فایل `.env` با کلیدهای API (Infura, AWS, Arvan)
+2. تنظیم فایل `.env` با کلیدهای API (مثال: `API_KEY=your_infura_key`)
 3. اجرای محلی: `docker-compose up --build`
 4. استقرار Kubernetes:
    - اعمال `kubectl apply -f Kubernetes/web-deployment.yaml`
-   - تنظیم Ingress برای HTTPS
+   - تنظیم Ingress برای HTTPS با Certbot
 5. نصب پکیج‌ها: `pip install -r requirements.txt`
 
 ## 📚 مستندات API
 - API عمومی در `api/dev_api.py` برای توسعه‌دهندگان
-- مستندات Swagger با `drf-yasg` در تولید
-- دسترسی: `http://yourdomain.com/api/docs`
+- مستندات Swagger: `http://yourdomain.com/api/docs`
+- نمونه درخواست: `curl -X GET http://yourdomain.com/api/videos/?q=test`
 
 ## 🌐 چندزبانه
 - پشتیبانی از فارسی و انگلیسی با `django-i18n`
-- فایل‌های ترجمه در `locale/` (نیاز به ایجاد)
+- ایجاد فایل‌های ترجمه: `python manage.py makemessages -l fa` و `python manage.py compilemessages`
 
 ## ⚙️ پیش‌نیازها
 - Docker, Kubernetes, NGINX, FFmpeg
@@ -38,3 +41,7 @@
 ## 🚧 نکات امنیتی
 - HTTPS با Let’s Encrypt
 - رمزنگاری داده‌ها با AES-256
+
+## 🛠️ عیب‌یابی
+- اگر Docker اجرا نشد: مطمئن شوید پورت 80 آزاد است.
+- خطای API: کلیدهای `.env` را چک کنید.
