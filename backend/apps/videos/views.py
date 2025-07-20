@@ -1,9 +1,11 @@
+import jwt
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from apps.videos.models import Video
-from apps.videos.serializers import VideoSerializer
+from .models import Video
+from .serializers import VideoSerializer
 from ai_engine.tasks import process_video_for_branding_removal
+from datetime import datetime, timedelta
 
 class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
@@ -32,12 +34,40 @@ class VideoViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_comment(self, request, pk=None):
         video = self.get_object()
-        comment = request.data.get('comment')
-        video.comments.create(user=request.user, text=comment)  # فرض مدل Comment
-        return Response({'status': 'comment added'}, status=status.HTTP_201_CREATED)
+        text = request.data.get('text')
+        parent_id = request.data.get('parent_id')
+        comment = Comment.objects.create(video=video, user=request.user, text=text)
+        if parent_id:
+            parent_comment = Comment.objects.get(id=parent_id)
+            comment.parent = parent_comment
+            comment.save()
+        return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def like_video(self, request, pk=None):
         video = self.get_object()
         video.likes.add(request.user)
         return Response({'status': 'liked'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def authenticate(self, request, pk=None):
+        token = request.headers.get('X-Token')
+        if not token:
+            return Response({'error': 'Token required'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            payload = jwt.decode(token, 'your_secret_key', algorithms=['HS256'])
+            if payload.get('exp') < datetime.utcnow().timestamp():
+                return Response({'error': 'Token expired'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'status': 'authenticated'}, status=status.HTTP_200_OK)
+        except jwt.InvalidTokenError:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    @action(detail=True, methods=['get'])
+    def get_token(self, request, pk=None):
+        video = self.get_object()
+        token = jwt.encode(
+            {'video_id': video.id, 'exp': (datetime.utcnow() + timedelta(minutes=10)).timestamp()},
+            'your_secret_key',
+            algorithm='HS256'
+        )
+        return Response({'token': token}, status=status.HTTP_200_OK)
