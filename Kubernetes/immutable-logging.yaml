@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immutable-logging
+  namespace: video-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immutable-logging
+  template:
+    metadata:
+      labels:
+        app: immutable-logging
+    spec:
+      containers:
+      - name: immutable-logging
+        image: your-registry/immutable-logging:latest
+        env:
+        - name: BLOCKCHAIN_URL
+          value: "https://your-blockchain-node"
+        resources:
+          limits:
+            cpu: "0.2"
+            memory: "256Mi"
+          requests:
+            cpu: "0.1"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: immutable-logging
+  namespace: video-platform
+spec:
+  selector:
+    app: immutable-logging
+  ports:
+  - protocol: TCP
+    port: 8081
+    targetPort: 8081
