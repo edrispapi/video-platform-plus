@@ -11,6 +11,7 @@ function VideoPlayer({ match }) {
   const [likes, setLikes] = useState(0);
   const [replyTo, setReplyTo] = useState(null);
   const [token, setToken] = useState('');
+  const [adUrl, setAdUrl] = useState('');
   const videoId = match.params.id;
 
   useEffect(() => {
@@ -28,6 +29,12 @@ function VideoPlayer({ match }) {
         setLikes(response.data.likes_count || 0);
       })
       .catch(error => console.error('Error fetching video:', error));
+
+    axios.get(`http://localhost/api/videos/${videoId}/get_ad/`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    })
+      .then(response => setAdUrl(response.data.ad_url))
+      .catch(error => console.error('Error fetching ad:', error));
   }, [videoId]);
 
   const handleCommentSubmit = () => {
@@ -59,6 +66,16 @@ function VideoPlayer({ match }) {
   return (
     <Box padding={2}>
       <Typography variant="h4" gutterBottom>Video Player</Typography>
+      {adUrl && (
+        <ReactPlayer
+          url={`https://yourdomain.com/${adUrl}`}
+          playing
+          controls
+          width="100%"
+          height="auto"
+          onEnded={() => playerRef.current.seekTo(0)} // Pre-roll ad
+        />
+      )}
       <ReactPlayer
         ref={playerRef}
         url={`https://yourdomain.com/hls/video_${videoId}.m3u8`}
