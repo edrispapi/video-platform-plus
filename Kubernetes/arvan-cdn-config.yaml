@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: arvan-cdn-config
+  namespace: video-platform
+data:
+  ARVAN_API_KEY: "your_arvan_api_key"  # از داشبورد ArvanCloud بگیرید
+  ARVAN_DOMAIN: "yourdomain.com"
+  ARVAN_CDN_ENDPOINT: "https://cdn.arvancloud.com"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arvan-cdn-proxy
+  namespace: video-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: arvan-cdn-proxy
+  template:
+    metadata:
+      labels:
+        app: arvan-cdn-proxy
+    spec:
+      containers:
+      - name: arvan-cdn-proxy
+        image: your-registry/arvan-cdn-proxy:latest
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: arvan-cdn-config
+        resources:
+          limits:
+            cpu: "0.2"
+            memory: "256Mi"
+          requests:
+            cpu: "0.1"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: arvan-cdn-proxy
+  namespace: video-platform
+spec:
+  selector:
+    app: arvan-cdn-proxy
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: arvan-cdn-proxy-vs
+  namespace: video-platform
+spec:
+  hosts:
+  - arvan-cdn-proxy
+  http:
+  - route:
+    - destination:
+        host: arvan-cdn-proxy
+        subset: v1
+      weight: 100
+    retries:
+      attempts: 3
+      perTryTimeout: 2s
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: arvan-cdn-proxy-dr
+  namespace: video-platform
+spec:
+  host: arvan-cdn-proxy
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
