@@ -6,10 +6,12 @@ import numpy as np
 import os
 from kafka import KafkaConsumer
 import json
+from fcm_django.models import FCMDevice  # برای FCM
+from django.core.mail import send_mail  # برای ایمیل
+from django.conf import settings
 
 @shared_task
 def process_video_for_branding_removal(video_id):
-    # کد قبلی برای حذف برند
     pass
 
 @shared_task
@@ -23,7 +25,7 @@ def moderate_content(video_id, content_type='video'):
             return {'status': 'rejected', 'reason': 'Inappropriate content detected'}
         return {'status': 'approved'}
     elif content_type == 'comment':
-        text = content_type  # فرض می‌کنیم text به‌عنوان ورودی ارسال شده
+        text = content_type
         result = analyze_content(text)
         return {'status': 'approved' if result['safe'] else 'rejected', 'reason': result.get('reason')}
 
@@ -52,9 +54,7 @@ def process_stream_analytics():
     )
     for message in consumer:
         event = message.value
-        # ذخیره در Data Lake (مثلاً MinIO)
         save_to_datalake(event)
-        # تحلیل ساده (مثلاً تعداد لایک‌ها)
         if event['event_type'] == 'like':
             print(f"Like event for video {event['video_id']} by user {event['user_id']}")
 
@@ -73,3 +73,22 @@ def save_to_datalake(event):
         length=-1,
         part_size=10*1024*1024
     )
+
+@shared_task
+def send_notification(video_id, message, notification_type='push'):
+    from django.contrib.auth.models import User
+    video = Video.objects.get(id=video_id)
+    uploader = video.uploader
+
+    if notification_type == 'push':
+        devices = FCMDevice.objects.filter(user=uploader)
+        for device in devices:
+            device.send_message(title="Video Platform", body=message)
+    elif notification_type == 'email':
+        send_mail(
+            'Revenue Update',
+            message,
+            settings.EMAIL_HOST_USER,
+            [uploader.email],
+            fail_silently=False,
+        )
