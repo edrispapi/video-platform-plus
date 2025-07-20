@@ -1,11 +1,18 @@
 import jwt
+import random
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Video
-from .serializers import VideoSerializer
+from .models import Video, Comment
+from .serializers import VideoSerializer, CommentSerializer
 from ai_engine.tasks import process_video_for_branding_removal
 from datetime import datetime, timedelta
+from web3 import Web3
+
+w3 = Web3(Web3.HTTPProvider('https://your-blockchain-node'))  # نود بلاکچین
+contract_address = 'your_contract_address'  # آدرس قرارداد هوشمند
+contract_abi = [...]  # ABI قرارداد (باید از کد قرارداد کپی بشه)
+contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
 class VideoViewSet(viewsets.ModelViewSet):
     queryset = Video.objects.all()
@@ -71,3 +78,29 @@ class VideoViewSet(viewsets.ModelViewSet):
             algorithm='HS256'
         )
         return Response({'token': token}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def get_ad(self, request, pk=None):
+        # شبیه‌سازی Real-time Bidding
+        ads = [
+            {'id': 1, 'url': 'ad1.mp4', 'bid': random.uniform(0.1, 1.0)},
+            {'id': 2, 'url': 'ad2.mp4', 'bid': random.uniform(0.1, 1.0)},
+            {'id': 3, 'url': 'ad3.mp4', 'bid': random.uniform(0.1, 1.0)}
+        ]
+        best_ad = max(ads, key=lambda x: x['bid'])
+        return Response({'ad_url': best_ad['url']}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def record_revenue(self, request, pk=None):
+        video = self.get_object()
+        amount = request.data.get('amount', 0.0)
+        account = w3.eth.account.from_key('your_private_key')  # کلید خصوصی امن
+        tx = contract.functions.recordRevenue(video.id, amount).buildTransaction({
+            'from': account.address,
+            'nonce': w3.eth.getTransactionCount(account.address),
+            'gas': 200000,
+            'gasPrice': w3.toWei('50', 'gwei')
+        })
+        signed_tx = w3.eth.account.sign_transaction(tx, 'your_private_key')
+        tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
+        return Response({'tx_hash': tx_hash.hex()}, status=status.HTTP_200_OK)
