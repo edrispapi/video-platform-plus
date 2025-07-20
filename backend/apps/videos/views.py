@@ -5,13 +5,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Video, Comment
 from .serializers import VideoSerializer, CommentSerializer
-from ai_engine.tasks import process_video_for_branding_removal
+from ai_engine.tasks import process_video_for_branding_removal, moderate_content
 from datetime import datetime, timedelta
 from web3 import Web3
 
-w3 = Web3(Web3.HTTPProvider('https://your-blockchain-node'))  # نود بلاکچین
-contract_address = 'your_contract_address'  # آدرس قرارداد هوشمند
-contract_abi = [...]  # ABI قرارداد (باید از کد قرارداد کپی بشه)
+w3 = Web3(Web3.HTTPProvider('https://your-blockchain-node'))
+contract_address = 'your_contract_address'
+contract_abi = [...]
 contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
 class VideoViewSet(viewsets.ModelViewSet):
@@ -23,6 +23,7 @@ class VideoViewSet(viewsets.ModelViewSet):
     def start_ai_processing(self, request, pk=None):
         video = self.get_object()
         process_video_for_branding_removal.delay(video.id)
+        moderate_content.delay(video.id, 'video')
         return Response({'status': 'AI processing started', 'video_id': video.id}, status=status.HTTP_202_ACCEPTED)
 
     def get(self, request):
@@ -34,7 +35,8 @@ class VideoViewSet(viewsets.ModelViewSet):
     def post(self, request):
         serializer = VideoSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            video = serializer.save()
+            moderate_content.delay(video.id, 'video')
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
 
@@ -48,6 +50,7 @@ class VideoViewSet(viewsets.ModelViewSet):
             parent_comment = Comment.objects.get(id=parent_id)
             comment.parent = parent_comment
             comment.save()
+        moderate_content.delay(comment.id, 'comment')
         return Response(CommentSerializer(comment).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
@@ -81,7 +84,6 @@ class VideoViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def get_ad(self, request, pk=None):
-        # شبیه‌سازی Real-time Bidding
         ads = [
             {'id': 1, 'url': 'ad1.mp4', 'bid': random.uniform(0.1, 1.0)},
             {'id': 2, 'url': 'ad2.mp4', 'bid': random.uniform(0.1, 1.0)},
@@ -94,7 +96,7 @@ class VideoViewSet(viewsets.ModelViewSet):
     def record_revenue(self, request, pk=None):
         video = self.get_object()
         amount = request.data.get('amount', 0.0)
-        account = w3.eth.account.from_key('your_private_key')  # کلید خصوصی امن
+        account = w3.eth.account.from_key('your_private_key')
         tx = contract.functions.recordRevenue(video.id, amount).buildTransaction({
             'from': account.address,
             'nonce': w3.eth.getTransactionCount(account.address),
