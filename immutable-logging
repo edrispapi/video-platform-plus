@@ -1,0 +1,5 @@
+FROM python:3.9
+WORKDIR /app
+COPY immutable_logging.py /app/
+RUN pip install web3.py
+CMD ["python", "immutable_logging.py"]
